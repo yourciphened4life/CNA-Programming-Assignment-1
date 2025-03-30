@@ -8,7 +8,7 @@ Programming Assignment 1: HTTP Web Proxy Server Programming Assignment (Python b
 - Began listening for incoming connections
 - Accepted a single connection and immediately closed it
 
-# STEP - 2 (Obtaining_remote_homepage Branch)
+# STEP - 2 & 3 (Obtaining_remote_homepage Branch)
 
 fixed: Remove extra leading slash in URI parsing and implement basic request forwarding
 
@@ -24,3 +24,14 @@ fixed: Remove extra leading slash in URI parsing and implement basic request for
 - Constructed and forwarded a minimal HTTP request (including Host and Connection: close headers) to the origin server.
 - Received the response from the origin server and forwarded it back to the client.
 - Implemented basic error handling and ensured proper cleanup by closing the client socket after processing.
+
+# STEP - 4 (Handle page that does not exist)
+
+- After reading the response from the origin server, decode the header to extract the status line.
+- Check if the status line contains "404" to detect a "Not Found" error.
+- Log a message indicating that a 404 Not Found was received, and forward the error response to the client without caching.
+
+fixed: 
+• Calling server_socket.listen(50) instead of serverSocket.listen(50) in the listening step.
+• A typo in printing the requested resource (resourse instead of resource).
+• Using the undefined variable host when constructing the HTTP request instead of hostname.
