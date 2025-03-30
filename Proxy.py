@@ -45,7 +45,7 @@ def main():
         sys.exit()
 
     # ---------------
-    # STEP 2: ACCEPT CLIENT & FORWARD REQUEST
+    # STEP 2 & 4: ACCEPT CLIENT, FORWARD REQUEST, & CACHE RESPONSE
     # ---------------
     while True:
         print('Waiting for connection...')
@@ -59,9 +59,6 @@ def main():
             print('Failed to accept connection:', e)
             sys.exit()
 
-        # ---------------
-        # READ CLIENT REQUEST
-        # ---------------
         try:
             message_bytes = clientSocket.recv(BUFFER_SIZE)
             if not message_bytes:
@@ -101,23 +98,35 @@ def main():
 
             print('Requested Resource:\t' + resource)
 
-            # ---------------
-            # CONNECT TO ORIGIN SERVER
-            # ---------------
+            # Determine cache location based on hostname and resource
+            cacheLocation = './' + hostname + resource
+            if cacheLocation.endswith('/'):
+                cacheLocation += 'default'
+            print('Cache location: ' + cacheLocation)
+
+            # Check if resource is in cache
+            if os.path.isfile(cacheLocation):
+                try:
+                    with open(cacheLocation, 'rb') as cacheFile:
+                        cacheData = cacheFile.read()
+                    print('Cache hit! Loading from cache file: ' + cacheLocation)
+                    clientSocket.sendall(cacheData)
+                    print('Sent cached response to client')
+                    clientSocket.close()
+                    continue
+                except Exception as e:
+                    print('Error reading cache file:', e)
+
+            # Resource not in cache, proceed to contact the origin server
             try:
                 originServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 address = socket.gethostbyname(hostname)
-                # By default, assume port 80 unless the URL indicates otherwise
-                originPort = 80
-
+                originPort = 80  # Default to port 80
                 print('Connecting to:\t\t' + hostname)
                 originServerSocket.connect((address, originPort))
                 print('Connected to origin server')
 
-                # ---------------
-                # FORWARD CLIENT REQUEST TO ORIGIN SERVER
-                # ---------------
-                # Minimal HTTP request with Host header
+                # Construct a minimal HTTP request with the Host header
                 originServerRequest = f"{method} {resource} {version}\r\n"
                 originServerRequest += f"Host: {hostname}\r\n"
                 originServerRequest += "Connection: close\r\n"
@@ -127,13 +136,10 @@ def main():
                 for line in originServerRequest.split('\r\n'):
                     if line:
                         print('> ' + line)
-
                 originServerSocket.sendall(originServerRequest.encode())
                 print('Request sent to origin server\n')
 
-                # ---------------
-                # READ RESPONSE FROM ORIGIN SERVER
-                # ---------------
+                # Read the response from the origin server
                 response_data = b''
                 while True:
                     chunk = originServerSocket.recv(BUFFER_SIZE)
@@ -141,7 +147,6 @@ def main():
                         break
                     response_data += chunk
 
-                # Check if the response indicates a 404 error and log it
                 try:
                     response_str = response_data.decode('utf-8', errors='replace')
                     status_line = response_str.split("\r\n")[0]
@@ -150,13 +155,35 @@ def main():
                 except Exception as e:
                     print("Error decoding response for status check:", e)
 
-                # ---------------
-                # SEND RESPONSE BACK TO CLIENT
-                # ---------------
+                # Check if caching is allowed by examining the Cache-Control header
+                cacheable = True
+                try:
+                    header_data = response_data.split(b"\r\n\r\n", 1)[0]
+                    header_text = header_data.decode('utf-8', errors='replace').lower()
+                    if "cache-control:" in header_text:
+                        if "no-store" in header_text or "private" in header_text:
+                            cacheable = False
+                except Exception as e:
+                    print("Error processing headers for caching:", e)
+
+                # If allowed, store the response in the cache
+                if cacheable:
+                    cacheDir, _ = os.path.split(cacheLocation)
+                    print('Caching response in directory: ' + cacheDir)
+                    if not os.path.exists(cacheDir):
+                        os.makedirs(cacheDir)
+                    try:
+                        with open(cacheLocation, 'wb') as cacheFile:
+                            cacheFile.write(response_data)
+                        print('Response cached in ' + cacheLocation)
+                    except Exception as e:
+                        print('Failed to write cache file:', e)
+                else:
+                    print('Response not cacheable, not storing in cache.')
+
+                # Send the response back to the client
                 clientSocket.sendall(response_data)
                 print('Sent response to client')
-
-                # Close origin server socket
                 originServerSocket.close()
 
             except OSError as err:
@@ -164,9 +191,7 @@ def main():
 
         except Exception as e:
             print('Error while processing request:', e)
-
         finally:
-            # Close the client socket for this request
             try:
                 clientSocket.close()
                 print('Closed client socket\n')
