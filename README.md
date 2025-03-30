@@ -44,3 +44,10 @@ fixed:
 - After receiving the response, examined the Cache-Control header for "no-store" or "private" directives.
 - If caching is permitted, created necessary directories and stored the full response in the cache.
 - Logged actions for cache hit, caching, and if caching was skipped due to prohibited directives.
+
+# STEP - 6 (Read from a cached file & Redownload the file from the origin server after file was removed from the proxy server)
+
+- The proxy checks if a requested resource exists in the cache. If a cache hit occurs, the server reads the file from disk and sends the cached response directly back to the client without contacting the origin server.
+- If the cache file is missing, the proxy does not detect a cache hit. In this case, it contacts the origin server, downloads the requested file, caches the new response, and then sends it back to the client.
+- This code is implemented by the following commit message from an earlier update:
+ "Added a check to see if the resource is already cached.if so, serve it directly"
