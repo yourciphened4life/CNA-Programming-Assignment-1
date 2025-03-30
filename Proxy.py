@@ -141,6 +141,15 @@ def main():
                         break
                     response_data += chunk
 
+                # Check if the response indicates a 404 error and log it
+                try:
+                    response_str = response_data.decode('utf-8', errors='replace')
+                    status_line = response_str.split("\r\n")[0]
+                    if "404" in status_line:
+                        print("Received 404 Not Found from origin server. Forwarding error response without caching.")
+                except Exception as e:
+                    print("Error decoding response for status check:", e)
+
                 # ---------------
                 # SEND RESPONSE BACK TO CLIENT
                 # ---------------
