@@ -51,3 +51,10 @@ fixed:
 - If the cache file is missing, the proxy does not detect a cache hit. In this case, it contacts the origin server, downloads the requested file, caches the new response, and then sends it back to the client.
 - This code is implemented by the following commit message from an earlier update:
  "Added a check to see if the resource is already cached.if so, serve it directly"
+
+# STEP - 7 (Handles URL redirections (301 and 302 only)
+
+- Added a block to decode the origin server's response header.
+- Built step 7 code to inspect the status line for "301" or "302".
+- Logged a message when a redirection is detected, then forwarded the redirection response to the client.
+- Retained caching behavior for redirection responses if allowed by Cache-Control headers.
