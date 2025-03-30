@@ -45,7 +45,7 @@ def main():
         sys.exit()
 
     # ---------------
-    # STEP 2 & 4: ACCEPT CLIENT, FORWARD REQUEST, & CACHE RESPONSE
+    # STEP 2, 4, & REDIRECTION HANDLING: ACCEPT CLIENT, FORWARD REQUEST, CACHE RESPONSE
     # ---------------
     while True:
         print('Waiting for connection...')
@@ -147,13 +147,21 @@ def main():
                         break
                     response_data += chunk
 
+                # ================================
+                # STEP 7: Handles URL redirections (301 and 302 only)
+                # ================================
                 try:
                     response_str = response_data.decode('utf-8', errors='replace')
                     status_line = response_str.split("\r\n")[0]
+                    # Check for 404
                     if "404" in status_line:
                         print("Received 404 Not Found from origin server. Forwarding error response without caching.")
+                    # New lines for redirection handling:
+                    if "301" in status_line or "302" in status_line:
+                        print("Received redirection (" + status_line + ") from origin server. Forwarding redirection response.")
                 except Exception as e:
                     print("Error decoding response for status check:", e)
+                # ================================
 
                 # Check if caching is allowed by examining the Cache-Control header
                 cacheable = True
