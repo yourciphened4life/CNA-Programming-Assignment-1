@@ -35,3 +35,12 @@ fixed:
 • Calling server_socket.listen(50) instead of serverSocket.listen(50) in the listening step.
 • A typo in printing the requested resource (resourse instead of resource).
 • Using the undefined variable host when constructing the HTTP request instead of hostname.
+
+# STEP - 5 (Cache requested webpages where caching is not prohibited by the RFC)
+
+- Determined cache location based on the hostname and requested resource.
+- Added a check to see if the resource is already cached; if so, serve it directly.
+- If not cached, forward the client request to the origin server.
+- After receiving the response, examined the Cache-Control header for "no-store" or "private" directives.
+- If caching is permitted, created necessary directories and stored the full response in the cache.
+- Logged actions for cache hit, caching, and if caching was skipped due to prohibited directives.
