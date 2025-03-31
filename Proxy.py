@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
 import socket
 import sys
 import os
 import argparse
 import re
+import time  # Added for handling Cache-Control max-age directive
 
 # 1MB buffer size
 BUFFER_SIZE = 1000000
@@ -104,18 +104,41 @@ def main():
                 cacheLocation += 'default'
             print('Cache location: ' + cacheLocation)
 
-            # Check if resource is in cache
+            # ================================
+            # STEP 8: Handles cache-control header max-age=<seconds>
+            # ================================
             if os.path.isfile(cacheLocation):
+                file_mtime = os.path.getmtime(cacheLocation)  # Get cached file's last modification time
+                current_time = time.time()  # Get current time
+                valid_cache = True  # Initialize cache validity flag
                 try:
                     with open(cacheLocation, 'rb') as cacheFile:
                         cacheData = cacheFile.read()
+                    # Extract headers from the cached response for max-age validation
+                    header_data = cacheData.split(b"\r\n\r\n", 1)[0]
+                    headers = header_data.decode('utf-8', errors='replace')
+                    # Look for a Cache-Control header with max-age directive
+                    for header_line in headers.split("\r\n"):
+                        if header_line.lower().startswith("cache-control:"):
+                            m = re.search(r'max-age=(\d+)', header_line, re.IGNORECASE)
+                            if m:
+                                max_age = int(m.group(1))
+                                if current_time - file_mtime > max_age:
+                                    valid_cache = False
+                                    print('Cache expired based on max-age directive.')
+                            break
+                except Exception as e:
+                    print('Error reading cache file for validation:', e)
+                    valid_cache = False
+
+                if valid_cache:
                     print('Cache hit! Loading from cache file: ' + cacheLocation)
                     clientSocket.sendall(cacheData)
                     print('Sent cached response to client')
                     clientSocket.close()
                     continue
-                except Exception as e:
-                    print('Error reading cache file:', e)
+                else:
+                    print('Cached response is expired. Fetching new response.')
 
             # Resource not in cache, proceed to contact the origin server
             try:
