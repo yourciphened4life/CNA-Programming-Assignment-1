@@ -58,3 +58,11 @@ fixed:
 - Built step 7 code to inspect the status line for "301" or "302".
 - Logged a message when a redirection is detected, then forwarded the redirection response to the client.
 - Retained caching behavior for redirection responses if allowed by Cache-Control headers.
+
+# STEP - 8 (Handles cache-control header max-age=<seconds>)
+
+- Imports the time module and retrieves the file's modification time using os.path.getmtime().
+- Reads the cached response and extracts the headers to locate a "Cache-Control" header with a max-age directive.
+- Compares the elapsed time since caching (using time.time()) against the specified max-age value.
+- If the cached file is still valid, it sends that response back to the client; if expired, it logs that information and proceeds to fetch a new response from the origin server.
+
